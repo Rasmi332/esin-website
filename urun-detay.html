@@ -8,9 +8,19 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/styles.css">
-<script src="js/products.js" defer>
+<script>
+  // Do not paint the sample product while the selected product is being resolved.
+  document.documentElement.classList.add('product-pending');
+  window.esinProductReady = function () {
+    clearTimeout(window.esinProductTimer);
+    document.documentElement.classList.remove('product-pending');
+  };
+  // Fail open if scripts cannot load. With JavaScript disabled the static page remains visible.
+  window.esinProductTimer = setTimeout(window.esinProductReady, 12000);
 </script>
-<script src="js/site.js" defer>
+<script src="js/products.js" defer onerror="window.esinProductReady()">
+</script>
+<script src="js/site.js" defer onerror="window.esinProductReady()">
 </script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"JewelryStore","name":"ESİN Kuyumculuk","telephone":"+902122757787","address":{"@type":"PostalAddress","streetAddress":"Fulya, Ortaklar Cd. No:3/1","addressLocality":"Şişli","addressRegion":"İstanbul","postalCode":"34394","addressCountry":"TR"},"foundingDate":"1983","hasMap":"https://www.google.com/maps?ftid=0x14cab6fe5dc57085:0xf55a17a37094af77","sameAs":["https://www.instagram.com/esinkuyumculuk/"]}</script>
 </head>

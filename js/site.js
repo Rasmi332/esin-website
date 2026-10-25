@@ -1,9 +1,45 @@
 /* ESİN — vanilla JavaScript interactions. No dependencies and no build step. */
 (async function () {
   'use strict';
+  const rootURL = new URL('../', document.currentScript.src);
+  // Fade only ordinary, same-site product navigation. Keep native link semantics.
+  const page = document.documentElement;
+  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let navigationTimer, restoreTimer;
+  const resetNavigation = () => {
+    clearTimeout(navigationTimer);
+    clearTimeout(restoreTimer);
+    page.classList.remove('product-leaving', 'product-entering');
+  };
+  // Safari restores the DOM from its back/forward cache, including transient classes.
+  window.addEventListener('pageshow', event => { if (event.persisted) resetNavigation(); });
+  window.addEventListener('pagehide', resetNavigation);
+  document.addEventListener('click', event => {
+    if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey ||
+        event.shiftKey || event.altKey || reducedMotion()) return;
+    const anchor = event.target.closest?.('a[href]');
+    if (!anchor || anchor.hasAttribute('download') ||
+        (anchor.target && anchor.target.toLowerCase() !== '_self')) return;
+    const url = new URL(anchor.href);
+    if (url.origin !== location.origin || !['http:', 'https:', 'file:'].includes(url.protocol) ||
+        url.hash || url.href === location.href) return;
+    const relativePath = url.pathname.startsWith(rootURL.pathname)
+      ? url.pathname.slice(rootURL.pathname.length) : '';
+    if (relativePath !== 'urun-detay.html' && !/^urunler\/[^/]+\.html$/.test(relativePath)) return;
+    if (page.classList.contains('product-leaving')) return;
+    event.preventDefault();
+    page.classList.remove('product-entering');
+    page.classList.add('product-leaving');
+    navigationTimer = setTimeout(() => {
+      // Restore if a navigation is cancelled or fails; never leave an invisible page.
+      restoreTimer = setTimeout(resetNavigation, 1500);
+      location.assign(url.href);
+    }, 180);
+  });
+
+  try {
   const data = window.ESIN_DATA;
   if (!data) return;
-  const rootURL = new URL('../', document.currentScript.src);
   const link = (file) => new URL(file, rootURL).href;
   const escape = (text) => String(text ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
   const imageURL = (image) => typeof image === 'string' && image.startsWith('https://cdn.sanity.io/') ? image : link('assets/' + (typeof image === 'number' ? `campaign-${image}.jpg` : image));
@@ -272,4 +308,25 @@
 
   const copyright = document.querySelector('.footer-bottom > span');
   if (copyright) copyright.textContent = `© ${new Date().getFullYear()} ESİN Kuyumculuk`;
+  } finally {
+    // Render the selected product before revealing it, including its decoded image.
+    if (document.querySelector('[data-detail]')) {
+      const image = document.querySelector('.gallery-main img');
+      if (image?.decode) {
+        let decodeTimeout;
+        await Promise.race([
+          image.decode().catch(() => {}),
+          new Promise(resolve => { decodeTimeout = setTimeout(resolve, 1200); }),
+        ]);
+        clearTimeout(decodeTimeout);
+      }
+      window.esinProductReady?.();
+      if (!reducedMotion()) {
+        page.classList.add('product-entering');
+        setTimeout(() => page.classList.remove('product-entering'), 180);
+      }
+    } else {
+      window.esinProductReady?.();
+    }
+  }
 })();

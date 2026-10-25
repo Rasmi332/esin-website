@@ -1595,3 +1595,13 @@ footer {
  .page-intro { font-size: 14px; }
  .contact-top { scroll-margin-top: 88px; }
 }
+
+
+/* Product navigation only: no layout, dimensions, or permanent appearance changes. */
+.product-pending #main,
+.product-pending footer { visibility: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .product-leaving #main { opacity: 0; transition: opacity 180ms ease; }
+  .product-entering #main { animation: product-arrival 180ms ease both; }
+  @keyframes product-arrival { from { opacity: 0; } to { opacity: 1; } }
+}
