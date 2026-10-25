@@ -2,39 +2,76 @@
 (async function () {
   'use strict';
   const rootURL = new URL('../', document.currentScript.src);
-  // Fade only ordinary, same-site product navigation. Keep native link semantics.
+  // One handler, separate timings: mobile menu 350ms; categories/products 180ms.
   const page = document.documentElement;
   const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let navigationTimer, restoreTimer;
+  const arrivalKey = 'esin-navigation-arrival';
+  let navigationTimer, restoreTimer, navigationPending = false;
+  let closeNavigationMenu = () => {};
   const resetNavigation = () => {
     clearTimeout(navigationTimer);
     clearTimeout(restoreTimer);
-    page.classList.remove('product-leaving', 'product-entering');
+    navigationPending = false;
+    page.classList.remove('product-leaving', 'product-entering', 'menu-leaving', 'navigation-entering');
+    page.style.removeProperty('--navigation-duration');
+    closeNavigationMenu();
   };
   // Safari restores the DOM from its back/forward cache, including transient classes.
   window.addEventListener('pageshow', event => { if (event.persisted) resetNavigation(); });
   window.addEventListener('pagehide', resetNavigation);
+  document.addEventListener('animationend', event => {
+    if (event.target.id === 'main' && event.animationName === 'product-arrival' && !navigationPending) {
+      page.classList.remove('navigation-entering');
+      page.style.removeProperty('--navigation-duration');
+    }
+  });
   document.addEventListener('click', event => {
     if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey ||
-        event.shiftKey || event.altKey || reducedMotion()) return;
+        event.shiftKey || event.altKey) return;
     const anchor = event.target.closest?.('a[href]');
     if (!anchor || anchor.hasAttribute('download') ||
         (anchor.target && anchor.target.toLowerCase() !== '_self')) return;
     const url = new URL(anchor.href);
-    if (url.origin !== location.origin || !['http:', 'https:', 'file:'].includes(url.protocol) ||
-        url.hash || url.href === location.href) return;
+    const menuLink = Boolean(anchor.closest('#mobile-menu nav'));
+    if (url.origin !== location.origin || !['http:', 'https:', 'file:'].includes(url.protocol)) return;
     const relativePath = url.pathname.startsWith(rootURL.pathname)
       ? url.pathname.slice(rootURL.pathname.length) : '';
-    if (relativePath !== 'urun-detay.html' && !/^urunler\/[^/]+\.html$/.test(relativePath)) return;
-    if (page.classList.contains('product-leaving')) return;
+    const categoryLink = document.body.dataset.page === '/' && anchor.matches('.category-card');
+    const productLink = relativePath === 'urun-detay.html' || /^urunler\/[^/]+\.html$/.test(relativePath);
+    if (!menuLink && !categoryLink && !productLink) return;
+    if (navigationPending) {
+      event.preventDefault(); // Ignore further taps until the first navigation completes.
+      return;
+    }
+    // Keep same-document anchors native; cross-page İletişim links still fade.
+    const sameDocument = url.pathname === location.pathname && url.search === location.search;
+    if (sameDocument || (url.hash && !menuLink)) {
+      if (menuLink) closeNavigationMenu();
+      return;
+    }
+    if (reducedMotion()) {
+      if (menuLink) closeNavigationMenu();
+      return;
+    }
     event.preventDefault();
-    page.classList.remove('product-entering');
-    page.classList.add('product-leaving');
+    navigationPending = true;
+    const duration = menuLink ? 350 : 180;
+    page.classList.remove('product-entering', 'navigation-entering');
+    page.style.setProperty('--navigation-duration', duration + 'ms');
+    page.classList.add(menuLink ? 'menu-leaving' : 'product-leaving');
+    // Keep the open menu in place while fading; close it only after leaving the page.
     navigationTimer = setTimeout(() => {
-      // Restore if a navigation is cancelled or fails; never leave an invisible page.
-      restoreTimer = setTimeout(resetNavigation, 1500);
+      if (menuLink || categoryLink) {
+        try {
+          sessionStorage.setItem(arrivalKey, JSON.stringify({href: url.href, duration, time: Date.now()}));
+        } catch (_) { /* Storage can be unavailable in private browsing. */ }
+      }
+      restoreTimer = setTimeout(() => {
+        try { sessionStorage.removeItem(arrivalKey); } catch (_) {}
+        resetNavigation();
+      }, 1500);
       location.assign(url.href);
-    }, 180);
+    }, duration);
   });
 
   try {
@@ -110,7 +147,7 @@
   opener.addEventListener('click', openMenu);
   closer.addEventListener('click', () => closeMenu());
   overlay.addEventListener('click', () => closeMenu());
-  menu.querySelectorAll('a').forEach(anchor => anchor.addEventListener('click', () => closeMenu(false)));
+  closeNavigationMenu = () => closeMenu(false);
   document.addEventListener('keydown', (event) => {
     if (!menuOpen) return;
     if (event.key === 'Escape') { event.preventDefault(); closeMenu(); }

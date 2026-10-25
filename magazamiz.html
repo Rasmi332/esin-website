@@ -8,6 +8,19 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/styles.css">
+<script>
+  // Consume a matching one-use navigation fade before the first content paint.
+  try {
+    const arrival = JSON.parse(sessionStorage.getItem('esin-navigation-arrival'));
+    sessionStorage.removeItem('esin-navigation-arrival');
+    const age = Date.now() - arrival?.time;
+    if (arrival?.href === location.href && age >= 0 && age < 15000 &&
+        [180, 350].includes(arrival.duration) && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.documentElement.style.setProperty('--navigation-duration', arrival.duration + 'ms');
+      document.documentElement.classList.add('navigation-entering');
+    }
+  } catch (_) { /* Navigation also works when storage is disabled. */ }
+</script>
 <script src="js/products.js" defer>
 </script>
 <script src="js/site.js" defer>

@@ -1597,11 +1597,13 @@ footer {
 }
 
 
-/* Product navigation only: no layout, dimensions, or permanent appearance changes. */
+/* Navigation opacity only: no layout, dimensions, or permanent appearance changes. */
 .product-pending #main,
 .product-pending footer { visibility: hidden; }
 @media (prefers-reduced-motion: no-preference) {
-  .product-leaving #main { opacity: 0; transition: opacity 180ms ease; }
+  .product-leaving #main { opacity: 0; transition: opacity var(--navigation-duration, 180ms) ease; }
+  .menu-leaving body { opacity: 0; transition: opacity var(--navigation-duration, 350ms) ease; }
+  .navigation-entering #main { animation: product-arrival var(--navigation-duration, 180ms) ease backwards; }
   body[data-page^="/urunler/"] #main,
   .product-entering #main { animation: product-arrival 180ms ease backwards; }
   @keyframes product-arrival { from { opacity: 0; } to { opacity: 1; } }
