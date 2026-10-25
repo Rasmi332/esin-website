@@ -1602,6 +1602,7 @@ footer {
 .product-pending footer { visibility: hidden; }
 @media (prefers-reduced-motion: no-preference) {
   .product-leaving #main { opacity: 0; transition: opacity 180ms ease; }
-  .product-entering #main { animation: product-arrival 180ms ease both; }
+  body[data-page^="/urunler/"] #main,
+  .product-entering #main { animation: product-arrival 180ms ease backwards; }
   @keyframes product-arrival { from { opacity: 0; } to { opacity: 1; } }
 }

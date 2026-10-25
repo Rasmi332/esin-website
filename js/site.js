@@ -310,7 +310,7 @@
   if (copyright) copyright.textContent = `© ${new Date().getFullYear()} ESİN Kuyumculuk`;
   } finally {
     // Render the selected product before revealing it, including its decoded image.
-    if (document.querySelector('[data-detail]')) {
+    if (page.classList.contains('product-pending') && document.querySelector('[data-detail]')) {
       const image = document.querySelector('.gallery-main img');
       if (image?.decode) {
         let decodeTimeout;
